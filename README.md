@@ -1,4 +1,5 @@
 # SurfaceNets Terrain Generator
+<img width="1261" height="972" alt="image" src="https://github.com/user-attachments/assets/ab40477f-b23f-4721-b453-9447848562ca" />
 
   Generator terenu 3D dla Unity wykorzystujący algorytm SurfaceNets do proceduralnego generowania gładkich mesh'y z danych voxelowych.
 
