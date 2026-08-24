@@ -8,20 +8,25 @@ using Unity.Mathematics;
 using UnityEngine;
 
 public static class SurfaceNetsGenerator
-{
+{ 
     public static JobHandle ScheduleChunkGeneration(
         Vector3 chunkWorldPos,
         BodyType type,
         BurstSimplexNoise noise,
         ref NativeArray<Point> densities,
-        out NativeList<float3> vertices,
-        out NativeList<int> triangles)
+        out Mesh.MeshDataArray meshDataArray,
+        out NativeReference<Bounds> meshBounds)
     {
         int densityCount = ChunkSN.DensityArraySize * ChunkSN.DensityArraySize * ChunkSN.DensityArraySize;
         int totalVoxels = ChunkSN.VoxelArraySize * ChunkSN.VoxelArraySize * ChunkSN.VoxelArraySize;
-        vertices = new NativeList<float3>(1000,Allocator.Persistent);
-        triangles = new NativeList<int>(5000,Allocator.Persistent);
+        
+        // temp
+        NativeList<float3> vertices = new NativeList<float3>(1000,Allocator.Persistent);
+        NativeList<int> triangles = new NativeList<int>(5000,Allocator.Persistent);
         NativeArray<short> voxelIndices = new NativeArray<short>(totalVoxels, Allocator.TempJob);
+        
+        meshDataArray = Mesh.AllocateWritableMeshData(1);
+        meshBounds = new NativeReference<Bounds>(Allocator.Persistent);
         
         JobHandle densityHandle = new JobHandle();
         if (!densities.IsCreated)
@@ -49,16 +54,24 @@ public static class SurfaceNetsGenerator
             VoxelSize = ChunkSN.VoxelArraySize,
             ChunkSize = ChunkSN.Size,
             
+            OutputMeshData = meshDataArray[0],
+            OutputBounds = meshBounds,
+            
             Vertices = vertices,
             Triangles = triangles,
             VoxelVertexIndices = voxelIndices
         };
         
         JobHandle handle = meshJob.Schedule(densityHandle);
+
+        vertices.Dispose(handle);
+        triangles.Dispose(handle);
+        voxelIndices.Dispose(handle);
         
         return handle;
     }
     
+    #region C# MESH GENERATION (DEPRECATED)
     public static (bool isAir, bool isUnder) CheckIsSurface(NativeArray<Point> densities)
     {
         bool hasSolid = false;
@@ -77,8 +90,7 @@ public static class SurfaceNetsGenerator
 
         return (!hasSolid, !hasAir);
     }
-
-    #region C# MESH GENERATION (DEPRECATED)
+    
     private static void CalculateVertices(NativeArray<Point> densityArray, out Vector3[] vertices, out Vector3[] normals, out short[,,] voxelVertexIndices)
     {
         List<Vector3> verticesList = new List<Vector3>();

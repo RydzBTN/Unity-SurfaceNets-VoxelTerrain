@@ -4,6 +4,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Debug = UnityEngine.Debug;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
@@ -22,6 +23,7 @@ public class ChunkSN : MonoBehaviour
     #region FIELDS
     private MeshFilter _meshFilter;
     private Mesh _mesh;
+    private MeshRenderer _meshRenderer;
     #endregion
     
     #region UNITY
@@ -60,10 +62,13 @@ public class ChunkSN : MonoBehaviour
     #endregion
     
     #region PUBLIC API
-    public void Initialize(BodyType type, BurstSimplexNoise noise)
+    public void Initialize()
     {
         _meshFilter = GetComponent<MeshFilter>();
+        _meshRenderer = GetComponent<MeshRenderer>();
+        
         _mesh = new Mesh();
+        _meshFilter.sharedMesh = _mesh;
     }
     
     public NativeArray<Point> ModifyDensityLocal(Vector3 miningWorldPos, float addedDens)
@@ -89,10 +94,24 @@ public class ChunkSN : MonoBehaviour
         
         _mesh.RecalculateNormals();
         _mesh.RecalculateBounds();
+        
         _mesh.name = $"{gameObject.name}_Mesh";
 
         _meshFilter.sharedMesh = _mesh;
         //Debug.Log($"<color = green>CHUNK MESH: Wierzchołki = {_vertices.Count}, Trójkąty = {_triangles.Count / 3}</color>");
+    }
+    
+    public void SetMesh(Mesh.MeshDataArray meshArray, Bounds bounds, bool disableRenderer)
+    {
+        Mesh.ApplyAndDisposeWritableMeshData(meshArray, _mesh, MeshUpdateFlags.DontValidateIndices);
+        _mesh.bounds = bounds;
+        
+        _mesh.name = $"{gameObject.name}_Mesh";
+        
+        // if (TryGetComponent<MeshRenderer>(out var renderer))
+        // {
+        //     renderer.enabled = _mesh.vertexCount > 0;
+        // }
     }
     #endregion
 }

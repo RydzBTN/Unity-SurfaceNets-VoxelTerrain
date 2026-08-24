@@ -96,9 +96,9 @@ public struct CelestialBodyGenerator
         float distance = math.length(pos);
         
         float terrain = FractalNoise(pos, noise,
-            octaves: 6,
-            frequency: 0.01f,
-            amplitude: 20f,
+            octaves: 5,
+            frequency: 0.005f,
+            amplitude: 30f,
             lacunarity: 2.0f,
             persistence: 0.5f);
 
@@ -109,7 +109,7 @@ public struct CelestialBodyGenerator
     [BurstCompile]
     private static float Moon(float3 pos, BurstSimplexNoise noise)
     {
-        float radius = 6000f;
+        float radius = 2000f;
         float distance = math.length(pos);
         
         float continents = noise.Generate(pos * 0.0001f) * 2000f;
@@ -179,7 +179,7 @@ public struct CelestialBodyGenerator
             case BodyType.SmallAsteroid: return 25f;
             case BodyType.Asteroid: return 100;
             case BodyType.Planetoid: return 500f;
-            case BodyType.Moon: return 6000f;
+            case BodyType.Moon: return 2000f;
             case BodyType.Comet: return 15f;
             default: return 50f;
         }

@@ -1,12 +1,21 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace _Project.SurfaceNets.Generator
-{ 
+{
+    [StructLayout(LayoutKind.Sequential)]
+    public struct VertexLayout
+    {
+        public float3 Position;
+        public float3 Normal;
+    }
+    
     [BurstCompile]
     public struct MeshJob : IJob
     {
@@ -16,11 +25,12 @@ namespace _Project.SurfaceNets.Generator
         public int ChunkSize;
         
         //Output
+        public Mesh.MeshData OutputMeshData;
         public NativeList<float3> Vertices;
         public NativeList<int> Triangles;
+        public NativeReference<Bounds> OutputBounds;
         
         //Temp
-        [DeallocateOnJobCompletion]
         public NativeArray<short> VoxelVertexIndices;
         
         public void Execute()
@@ -42,7 +52,7 @@ namespace _Project.SurfaceNets.Generator
                 int3 offset = SurfaceNetsTables.CornerOffsets[i];
                 cornerOffsets1D[i] = offset.x * dStrideX + offset.y * dStrideY + offset.z * dStrideZ;
             }
-
+            
             // =================  CalculateVertices  ===================
             for (int i = 0; i < VoxelVertexIndices.Length; i++)
             {
@@ -214,6 +224,94 @@ namespace _Project.SurfaceNets.Generator
             }
             
             
+            // =================  Zapis do MeshData  ===================
+            if (Vertices.Length == 0 || Triangles.Length == 0)
+            {
+                // Pusty chunk (np. samo powietrze lub sama lita skała)
+                var emptyDesc = new NativeArray<VertexAttributeDescriptor>(0, Allocator.Temp);
+                OutputMeshData.SetVertexBufferParams(0, emptyDesc);
+                emptyDesc.Dispose();
+                
+                OutputMeshData.SetIndexBufferParams(0, IndexFormat.UInt32);
+                
+                OutputMeshData.subMeshCount = 1;
+                OutputMeshData.SetSubMesh(0, new SubMeshDescriptor(0, 0, MeshTopology.Triangles));
+                return;
+            }
+            
+             // definicja formatu wierzchołka w buforze GPU
+            var vertexAttributes = new NativeArray<VertexAttributeDescriptor>(2, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+            vertexAttributes[0] = new VertexAttributeDescriptor(VertexAttribute.Position);
+            vertexAttributes[1] = new VertexAttributeDescriptor(VertexAttribute.Normal);
+
+            OutputMeshData.SetVertexBufferParams(Vertices.Length, vertexAttributes);
+            vertexAttributes.Dispose();
+            OutputMeshData.SetIndexBufferParams(Triangles.Length, IndexFormat.UInt32);
+
+            // wskaźniki do buforów MeshData
+            NativeArray<VertexLayout> outVertices = OutputMeshData.GetVertexData<VertexLayout>();
+            NativeArray<int> outIndices = OutputMeshData.GetIndexData<int>();
+            outIndices.CopyFrom(Triangles.AsArray()); // od razu przepisanie trojkątów
+            
+            float3 min = new float3(float.MaxValue);
+            float3 max = new float3(float.MinValue);
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                float3 pos = Vertices[i];
+                min = math.min(min, pos);
+                max = math.max(max, pos);
+
+                outVertices[i] = new VertexLayout
+                {
+                    Position = pos,
+                    Normal = float3.zero
+                };
+            }
+            
+            // obliczenie normalow
+            for (int i = 0; i < Triangles.Length; i += 3)
+            {
+                int i0 = Triangles[i];
+                int i1 = Triangles[i + 1];
+                int i2 = Triangles[i + 2];
+
+                float3 v0 = outVertices[i0].Position;
+                float3 v1 = outVertices[i1].Position;
+                float3 v2 = outVertices[i2].Position;
+
+                float3 triNormal = math.cross(v1 - v0, v2 - v0);
+
+                var vert0 = outVertices[i0];
+                var vert1 = outVertices[i1];
+                var vert2 = outVertices[i2];
+
+                vert0.Normal += triNormal;
+                vert1.Normal += triNormal;
+                vert2.Normal += triNormal;
+
+                outVertices[i0] = vert0;
+                outVertices[i1] = vert1;
+                outVertices[i2] = vert2;
+            }
+
+            // normalizacja
+            for (int i = 0; i < outVertices.Length; i++)
+            {
+                var vert = outVertices[i];
+                float lenSq = math.lengthsq(vert.Normal);
+                if (lenSq > 1e-6f)
+                {
+                    vert.Normal *= math.rsqrt(lenSq);
+                }
+                outVertices[i] = vert;
+            }
+            
+            float3 size = max - min;
+            float3 center = min + (size * 0.5f);
+            OutputBounds.Value = new Bounds(center, size);
+
+            OutputMeshData.subMeshCount = 1;
+            OutputMeshData.SetSubMesh(0, new SubMeshDescriptor(0, Triangles.Length, MeshTopology.Triangles), MeshUpdateFlags.DontRecalculateBounds);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

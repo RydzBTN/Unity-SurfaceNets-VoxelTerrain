@@ -12,15 +12,19 @@ using Debug = UnityEngine.Debug;
 public class TerrainGenerator : MonoBehaviour
 {
     #region CONSTANTS AND CONFIGURATION
-    [Header("World Gen")]
+    [Header("World Gen")] 
+    public int chunkCount = 0;
+    public int currentgen = 0;
+    
     [SerializeField] private BodyData bodyData;
     
-    [Header("Chunk Generation"), Space(15)]
+    [Space(15), Header("Chunk Generation"), Space(5)]
     [SerializeField] private ChunkSN chunkPrefab;
-    [SerializeField] private int maxConcurrentGen = 64;
     [SerializeField] private bool destroyAir = false;
     [SerializeField] private bool destroySolid = false;
-
+    [SerializeField] private bool generateAsync = true;
+    
+    
     [Header("Dynamic Render Distance")]
     [SerializeField] private Transform player;
     [SerializeField] private int renderDistance = 8;
@@ -36,20 +40,17 @@ public class TerrainGenerator : MonoBehaviour
     #endregion
     
     #region FIELDS
-        #region GENERATION
-        private readonly Dictionary<Vector3Int, ChunkSN> _loadedChunks = new Dictionary<Vector3Int, ChunkSN>();
-        private readonly Dictionary<Vector3Int, NativeArray<Point>> _modifiedChunks = new Dictionary<Vector3Int, NativeArray<Point>>();
-        private readonly HashSet<Vector3Int> _destroyedChunks = new HashSet<Vector3Int>();
-        private readonly Queue<Vector3Int> _generateQueue = new Queue<Vector3Int>();
-        private readonly HashSet<Vector3Int> _generatingChunks = new HashSet<Vector3Int>();
-        private int _activeGenerations = 0;
-        #endregion
-    
+    private readonly Dictionary<Vector3Int, ChunkSN> _loadedChunks = new Dictionary<Vector3Int, ChunkSN>();
+    private readonly Dictionary<Vector3Int, NativeArray<Point>> _modifiedChunks = new Dictionary<Vector3Int, NativeArray<Point>>();
+    private readonly HashSet<Vector3Int> _destroyedChunks = new HashSet<Vector3Int>();
+    private readonly HashSet<Vector3Int> _generatingChunks = new HashSet<Vector3Int>();
     private BurstSimplexNoise _noise;
     private Vector3Int _lastChunkPlayerPos;
-    private List<int> genTimes = new List<int>();
-    #endregion
+    private readonly List<Vector3Int> chunksToUnload = new List<Vector3Int>();
 
+    private List<long> times = new List<long>();
+    #endregion
+    
     #region UNITY
     private void Awake()
     {
@@ -62,14 +63,14 @@ public class TerrainGenerator : MonoBehaviour
     private void Update()
     {
         UpdateChunksAroundPlayer();
-        ProcessGenerationQueue();
+        chunkCount = _loadedChunks.Count;
+        currentgen = _generatingChunks.Count;
     }
-
+    
     private void OnDestroy()
     {
         _noise.Dispose();
-        
-        Debug.Log($"average genTime: {genTimes.Average()} ms");
+        Debug.Log($"avg chunk gen time: {times.Average()}");
     }
     
     #endregion
@@ -101,9 +102,10 @@ public class TerrainGenerator : MonoBehaviour
                 continue; // już załadowany, zniszczony lub w trakcie generowania
 
             int lodStep = GetLodStep(distSq);
-            
+
             _generatingChunks.Add(chunkIndex);
-            _generateQueue.Enqueue(chunkIndex);
+            if (generateAsync) _= GenerateChunkAsync(chunkIndex);
+            else GenerateChunk(chunkIndex);
             
         }
         UnloadDistantChunks(currentChunkPlayerPos, renderDistance + 4);
@@ -124,10 +126,9 @@ public class TerrainGenerator : MonoBehaviour
         return lod2Step;
     }
     
-    // todo sprawdzić InvokeRepeating(nameof(CleanupDistantDestroyedChunks), 300f, 300f);
     private void UnloadDistantChunks(Vector3Int playerChunkIndex, int maxDistance)
     {
-        List<Vector3Int> chunksToUnload = new List<Vector3Int>();
+        chunksToUnload.Clear();
         int maxDistSq = maxDistance * maxDistance;
 
         foreach (KeyValuePair<Vector3Int,ChunkSN> kvp in _loadedChunks)
@@ -141,80 +142,128 @@ public class TerrainGenerator : MonoBehaviour
         foreach (Vector3Int i in chunksToUnload)
         {
             ChunkSN chunk = _loadedChunks[i];
-            if (chunk != null) Destroy(chunk.gameObject);
+            //if (chunk != null) 
+            Destroy(chunk.gameObject);
             _loadedChunks.Remove(i);
         }
     }
-
     
     
-    private void ProcessGenerationQueue()
-    {
-        while (_activeGenerations < maxConcurrentGen && _generateQueue.Count > 0)
-        {
-            Vector3Int chunkIndex = _generateQueue.Dequeue();
-            
-            StartCoroutine(GenerateChunk(chunkIndex));
-            _activeGenerations++;
-        }
-    }
-    
-    private IEnumerator GenerateChunk(Vector3Int chunkIndex)
+    private async Awaitable GenerateChunkAsync(Vector3Int chunkIndex)
     {
         Stopwatch sw = new Stopwatch();
         sw.Start();
         
+        bool disableRenderer = false;
         NativeArray<Point> densityArray = new NativeArray<Point>();
         Vector3 chunkWorldPos = chunkIndex * ChunkSN.Size - ChunkSN.Offset;
         
         if (_modifiedChunks.TryGetValue(chunkIndex, out NativeArray<Point> points))
-        {
             densityArray = points;
-        }
         
         JobHandle handle = SurfaceNetsGenerator.ScheduleChunkGeneration(
             chunkWorldPos, bodyData.type, _noise,
             ref densityArray,
-            out NativeList<float3> vertices,
-            out NativeList<int> triangles);
+            out Mesh.MeshDataArray meshDataArray,
+            out NativeReference<Bounds> meshBounds);
             
+        JobHandle.ScheduleBatchedJobs();
+        
         while (!handle.IsCompleted)
-            yield return null;
+            await Awaitable.NextFrameAsync();
+        
         handle.Complete();
-
-        if (vertices.Length == 0)
+        
+        if (meshDataArray[0].vertexCount == 0)
         {
+            disableRenderer = true;
             bool isUnderground = densityArray[0].IsSolid;
             bool isAir = !isUnderground;
 
             if ((isAir && destroyAir) || (isUnderground && destroySolid))
             {
                 _generatingChunks.Remove(chunkIndex);
-                _activeGenerations--;
                 _destroyedChunks.Add(chunkIndex);
-
+                
                 if (!points.IsCreated) densityArray.Dispose();
-                vertices.Dispose();
-                triangles.Dispose();
-            
-                yield break;
+                meshDataArray.Dispose();
+                meshBounds.Dispose();
+                
+                return;
             }
         }
         
         ChunkSN chunk = Instantiate(chunkPrefab, chunkWorldPos, Quaternion.identity, transform);
         chunk.gameObject.name = $"Chunk_({chunkIndex.x}_{chunkIndex.y}_{chunkIndex.z})";
-        chunk.Initialize(bodyData.type, _noise);
-        chunk.SetMesh(vertices, triangles);
+        chunk.Initialize();
+        chunk.SetMesh(meshDataArray, meshBounds.Value, disableRenderer);
         
-        if (!points.IsCreated) densityArray.Dispose();
-        vertices.Dispose();
-        triangles.Dispose();
-        
-        sw.Stop();
-        genTimes.Add((int)sw.ElapsedMilliseconds);
+        if (!points.IsCreated) 
+            densityArray.Dispose();
+        meshBounds.Dispose();
         
         _loadedChunks.Add(chunkIndex, chunk);
         _generatingChunks.Remove(chunkIndex);
-        _activeGenerations--;
+        
+        sw.Stop();
+        times.Add(sw.ElapsedMilliseconds);
+    }
+    
+    
+    // nie aktualizowana na bieżąco
+    private void GenerateChunk(Vector3Int chunkIndex)
+    {
+        Stopwatch sw = new Stopwatch();
+        sw.Start();
+
+        bool disableRenderer = false;
+        NativeArray<Point> densityArray = new NativeArray<Point>();
+        Vector3 chunkWorldPos = chunkIndex * ChunkSN.Size - ChunkSN.Offset;
+        
+        if (_modifiedChunks.TryGetValue(chunkIndex, out NativeArray<Point> points))
+            densityArray = points;
+        
+        JobHandle handle = SurfaceNetsGenerator.ScheduleChunkGeneration(
+            chunkWorldPos, bodyData.type, _noise,
+            ref densityArray,
+            out Mesh.MeshDataArray meshDataArray,
+            out NativeReference<Bounds> meshBounds);
+            
+        JobHandle.ScheduleBatchedJobs();
+        
+        handle.Complete();
+        
+        if (meshDataArray[0].vertexCount == 0)
+        {
+            disableRenderer = true;
+            bool isUnderground = densityArray[0].IsSolid;
+            bool isAir = !isUnderground;
+
+            if ((isAir && destroyAir) || (isUnderground && destroySolid))
+            {
+                _destroyedChunks.Add(chunkIndex);
+                _generatingChunks.Remove(chunkIndex);
+                
+                if (!points.IsCreated) densityArray.Dispose();
+                meshDataArray.Dispose();
+                meshBounds.Dispose();
+                
+                return;
+            }
+        }
+        
+        ChunkSN chunk = Instantiate(chunkPrefab, chunkWorldPos, Quaternion.identity, transform);
+        chunk.gameObject.name = $"Chunk_({chunkIndex.x}_{chunkIndex.y}_{chunkIndex.z})";
+        chunk.Initialize();
+        chunk.SetMesh(meshDataArray, meshBounds.Value, disableRenderer);
+        
+        if (!points.IsCreated) 
+            densityArray.Dispose();
+        meshBounds.Dispose();
+        _loadedChunks.Add(chunkIndex, chunk);
+        _generatingChunks.Remove(chunkIndex);
+        
+        sw.Stop();
+        times.Add(sw.ElapsedMilliseconds);
     }
 }
