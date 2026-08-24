@@ -19,7 +19,6 @@ namespace _Project.SurfaceNets.Generator
         
         public void Execute(int index)
         {
-            // todo na pewno jest coś szybszego niż Grid3D.ToXYZ sprawdzić w MeshJob
             int3 pos = Grid3D.ToXYZ(index, DensityArraySize);
             int x = pos.x, y = pos.y, z = pos.z;
             

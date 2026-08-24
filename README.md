@@ -35,7 +35,7 @@
   1. Player Position
   2. TerrainGenerator - sprawdza chunki w render distance
   3. Dodaje do kolejki generowania
-  4. DensityJob (IJobParallelFor, batch 64) → NativeArray<Point> z wartościami gęstości
+  4. DensityJob (IJobParallelFor, batch 64) → NativeArray<Point> z wartościami gęstości
   5. CheckIsSurface() - culling pustych/pełnych chunków
   6. MeshJob (IJob) - algorytm SurfaceNets → NativeList<float3> vertices → NativeList<int> triangles
   7. ChunkSN.SetMesh() → Konwersja NativeArray → Unity Mesh
@@ -78,7 +78,7 @@
   
   Wydajność
 
-  - Generowanie chunka: **~14ms** (w edytorze z włączonymi Destroy Air i Destroy Solid oraz MaxConcurrentGen: 1)
+  - Generowanie chunka: **~4ms** (w edytorze z włączonymi Destroy Air i Destroy Solid oraz MaxConcurrentGen: 1)
   - Mesh Job (IJob): single-threaded (wymaga sekwencyjnego dostępu)
   - Culling: pomija ~70% chunków przy typowej konfiguracji
 

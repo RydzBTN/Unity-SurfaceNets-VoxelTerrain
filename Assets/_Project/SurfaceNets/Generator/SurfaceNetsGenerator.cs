@@ -9,37 +9,41 @@ using UnityEngine;
 
 public static class SurfaceNetsGenerator
 {
-    public static JobHandle  ScheduleDensityJob(
-        Vector3 chunkWorldPos, BodyType type, BurstSimplexNoise noise,
-        out NativeArray<Point> densities)
+    public static JobHandle ScheduleChunkGeneration(
+        Vector3 chunkWorldPos,
+        BodyType type,
+        BurstSimplexNoise noise,
+        ref NativeArray<Point> densities,
+        out NativeList<float3> vertices,
+        out NativeList<int> triangles)
     {
         int densityCount = ChunkSN.DensityArraySize * ChunkSN.DensityArraySize * ChunkSN.DensityArraySize;
-        densities = new NativeArray<Point>(densityCount, Allocator.Persistent);
-        
-        DensityJob job = new DensityJob
-        {
-            ChunkWorldPos = chunkWorldPos,
-            DensityArraySize = ChunkSN.DensityArraySize,
-            BodyType = (int)type,
-            Noise = noise,
-            Densities = densities
-        };
-        JobHandle handle = job.Schedule(densityCount, 64);
-        JobHandle.ScheduleBatchedJobs();
-        return handle;
-    }
-    
-    public static JobHandle ScheduleMeshJob(NativeArray<Point> densityArray,
-            out NativeList<float3> vertices, out NativeList<int> triangles)
-    {
         int totalVoxels = ChunkSN.VoxelArraySize * ChunkSN.VoxelArraySize * ChunkSN.VoxelArraySize;
         vertices = new NativeList<float3>(1000,Allocator.Persistent);
         triangles = new NativeList<int>(5000,Allocator.Persistent);
-        NativeArray<short> voxelIndices = new NativeArray<short>(totalVoxels, Allocator.Persistent);
+        NativeArray<short> voxelIndices = new NativeArray<short>(totalVoxels, Allocator.TempJob);
         
-        MeshJob job = new MeshJob
+        JobHandle densityHandle = new JobHandle();
+        if (!densities.IsCreated)
         {
-            Density = densityArray,
+            densities = new NativeArray<Point>(densityCount, Allocator.Persistent);
+        
+            DensityJob densityJob = new DensityJob
+            {
+                ChunkWorldPos = chunkWorldPos,
+                DensityArraySize = ChunkSN.DensityArraySize,
+                BodyType = (int)type,
+                Noise = noise,
+                Densities = densities
+            };
+            densityHandle = densityJob.Schedule(densityCount, 64);
+            JobHandle.ScheduleBatchedJobs();
+        }
+        
+        
+        MeshJob meshJob = new MeshJob
+        {
+            Density = densities,
             
             DensitySize = ChunkSN.DensityArraySize,
             VoxelSize = ChunkSN.VoxelArraySize,
@@ -50,8 +54,8 @@ public static class SurfaceNetsGenerator
             VoxelVertexIndices = voxelIndices
         };
         
-        JobHandle handle = job.Schedule();
-        JobHandle.ScheduleBatchedJobs();
+        JobHandle handle = meshJob.Schedule(densityHandle);
+        
         return handle;
     }
     

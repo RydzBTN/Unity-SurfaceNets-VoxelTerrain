@@ -40,7 +40,7 @@ namespace _Project.SurfaceNets.Generator
             for (int i = 0; i < 8; i++)
             {
                 int3 offset = SurfaceNetsTables.CornerOffsets[i];
-                cornerOffsets1D[i] = offset.x * dStrideX + offset.y * dStrideY + offset.z * vStrideZ;
+                cornerOffsets1D[i] = offset.x * dStrideX + offset.y * dStrideY + offset.z * dStrideZ;
             }
 
             // =================  CalculateVertices  ===================
@@ -179,6 +179,38 @@ namespace _Project.SurfaceNets.Generator
                         AddQuad(c0, c1, c2, c3, !s1);
                     }
                 }
+            }
+            
+            
+            // =========== Usuwanie nieużywanych wierzchołków ===========
+            if (Triangles.Length > 0 && Vertices.Length > 0)
+            {
+                NativeArray<int> remap = new NativeArray<int>(Vertices.Length, Allocator.Temp);
+                for (int i = 0; i < remap.Length; i++) remap[i] = -1;
+                
+                for (int i = 0; i < Triangles.Length; i++)
+                {
+                    remap[Triangles[i]] = 1;
+                }
+                
+                NativeList<float3> compactVertices = new NativeList<float3>(Vertices.Length, Allocator.Temp);
+                int newIndex = 0;
+                for (int i = 0; i < Vertices.Length; i++)
+                {
+                    if (remap[i] != -1)
+                    {
+                        remap[i] = newIndex++;
+                        compactVertices.Add(Vertices[i]);
+                    }
+                }
+                
+                for (int i = 0; i < Triangles.Length; i++)
+                {
+                    Triangles[i] = remap[Triangles[i]];
+                }
+                
+                Vertices.Clear();
+                Vertices.AddRange(compactVertices.AsArray());
             }
             
             

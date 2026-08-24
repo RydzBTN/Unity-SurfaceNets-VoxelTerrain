@@ -164,42 +164,51 @@ public class TerrainGenerator : MonoBehaviour
         Stopwatch sw = new Stopwatch();
         sw.Start();
         
-        NativeArray<Point> densityArray;
+        NativeArray<Point> densityArray = new NativeArray<Point>();
         Vector3 chunkWorldPos = chunkIndex * ChunkSN.Size - ChunkSN.Offset;
         
         if (_modifiedChunks.TryGetValue(chunkIndex, out NativeArray<Point> points))
         {
             densityArray = points;
         }
-        else
+        
+        JobHandle handle = SurfaceNetsGenerator.ScheduleChunkGeneration(
+            chunkWorldPos, bodyData.type, _noise,
+            ref densityArray,
+            out NativeList<float3> vertices,
+            out NativeList<int> triangles);
+            
+        while (!handle.IsCompleted)
+            yield return null;
+        handle.Complete();
+
+        if (vertices.Length == 0)
         {
-            JobHandle handleDensity = SurfaceNetsGenerator.ScheduleDensityJob(
-                chunkWorldPos, bodyData.type, _noise, out densityArray);
-            
-            while (!handleDensity.IsCompleted)
-                yield return null;
-            handleDensity.Complete();
-            
-            var (isAir, isUnderground) = SurfaceNetsGenerator.CheckIsSurface(densityArray);
+            bool isUnderground = densityArray[0].IsSolid;
+            bool isAir = !isUnderground;
+
             if ((isAir && destroyAir) || (isUnderground && destroySolid))
             {
                 _generatingChunks.Remove(chunkIndex);
                 _activeGenerations--;
                 _destroyedChunks.Add(chunkIndex);
-                    
-                densityArray.Dispose(); 
+
+                if (!points.IsCreated) densityArray.Dispose();
+                vertices.Dispose();
+                triangles.Dispose();
+            
                 yield break;
             }
         }
         
-        
         ChunkSN chunk = Instantiate(chunkPrefab, chunkWorldPos, Quaternion.identity, transform);
         chunk.gameObject.name = $"Chunk_({chunkIndex.x}_{chunkIndex.y}_{chunkIndex.z})";
         chunk.Initialize(bodyData.type, _noise);
+        chunk.SetMesh(vertices, triangles);
         
-        
-        yield return StartCoroutine(chunk.GenerateMeshCoroutine(densityArray));
-        if(!_modifiedChunks.ContainsKey(chunkIndex)) densityArray.Dispose();
+        if (!points.IsCreated) densityArray.Dispose();
+        vertices.Dispose();
+        triangles.Dispose();
         
         sw.Stop();
         genTimes.Add((int)sw.ElapsedMilliseconds);

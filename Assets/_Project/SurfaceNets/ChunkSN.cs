@@ -23,7 +23,7 @@ public class ChunkSN : MonoBehaviour
     private MeshFilter _meshFilter;
     private Mesh _mesh;
     #endregion
-
+    
     #region UNITY
     private void OnDrawGizmos()
     {
@@ -58,7 +58,7 @@ public class ChunkSN : MonoBehaviour
        
     }
     #endregion
-
+    
     #region PUBLIC API
     public void Initialize(BodyType type, BurstSimplexNoise noise)
     {
@@ -80,48 +80,19 @@ public class ChunkSN : MonoBehaviour
     #endregion
     
     #region MESH GENERATION
-    private void SetMesh(MeshData data)
+    public void SetMesh(NativeList<float3> vertices, NativeList<int> triangles)
     {
         _mesh.Clear();
-
-        if (data.Vertices.Length == 0) return;
-
-        _mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-
-        _mesh.SetVertices(data.Vertices);
-        _mesh.SetTriangles(data.Triangles, 0);
+        
+        _mesh.SetVertices(vertices.AsArray());
+        _mesh.SetIndices(triangles.AsArray(), MeshTopology.Triangles, 0);
         
         _mesh.RecalculateNormals();
         _mesh.RecalculateBounds();
-        _mesh.Optimize();
-        
         _mesh.name = $"{gameObject.name}_Mesh";
 
         _meshFilter.sharedMesh = _mesh;
-        
         //Debug.Log($"<color = green>CHUNK MESH: Wierzchołki = {_vertices.Count}, Trójkąty = {_triangles.Count / 3}</color>");
-    }
-    
-    
-    public IEnumerator GenerateMeshCoroutine(NativeArray<Point> densityArray)
-    {
-        JobHandle handleMesh = SurfaceNetsGenerator.ScheduleMeshJob(densityArray,
-            out NativeList<float3> vertices, out NativeList<int> triangles);
-            
-        while (!handleMesh.IsCompleted)
-            yield return null;
-        handleMesh.Complete();
-        
-        MeshData data = new MeshData
-        {
-            Vertices = vertices.AsArray().Reinterpret<Vector3>().ToArray(),
-            Triangles = triangles.AsArray().ToArray()
-        };
-
-        vertices.Dispose();
-        triangles.Dispose();
-
-        SetMesh(data);
     }
     #endregion
 }
