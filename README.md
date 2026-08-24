@@ -16,8 +16,7 @@
 
   - **Algorytm SurfaceNets** - generowanie gładkich mesh'y z danych voxelowych poprzez
     interpolację przecięć powierzchni
-  - **Wielowątkowość (C# Job System + Burst)** – generowanie ciągiem gęstości terenu
-    oraz ekstrakcji siatki.
+  - **Wielowątkowość (C# Job System + Burst)** – generowanie sekwencyjnie gęstości terenu oraz siatki.
   - **Zero-Copy Mesh Generation (`Mesh.MeshDataArray`)** - pominięcie zarządzanych tablic C# (`Vector3[]`, `int[]`)
   - **System chunków** - dynamiczne ładowanie i wyładowywanie terenu wokół gracza
   - **Simplex Noise** - proceduralne generowanie gęstości terenu z warstwami szumu FractalNoise
