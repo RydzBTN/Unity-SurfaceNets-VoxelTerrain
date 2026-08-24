@@ -5,9 +5,8 @@
 
   Generator terenu 3D dla Unity wykorzystujący algorytm SurfaceNets do proceduralnego generowania gładkich mesh'y z danych voxelowych.
 
----
   ## Opis
-
+  
   Projekt implementuje algorytm SurfaceNets do generowania terenu w czasie rzeczywistym. 
   W przeciwieństwie do klasycznego Marching Cubes, SurfaceNets tworzy gładsze siatki z
   mniejszą liczbą artefaktów, co czyni go idealnym do generowania naturalnie wyglądających
@@ -35,7 +34,6 @@
     - System LOD (3 poziomy szczegółowości) (wip)
     - Dynamiczne zwalnianie odległych chunków
 
----
   ## Architektura
   
   ### Przepływ danych
@@ -64,7 +62,7 @@
   
   #### *CelestialBodyGenerator* & *BurstSimplexNoise*
   - Warstwa matematyczna świata generująca wartości gęstości na podstawie pozycji globalnej wierzchołka, wybranego profilu ciała niebieskiego.
----
+
   ### Podstawowa konfiguracja
 
   1. Dodaj prefab TerrainGenerator na scene
@@ -77,7 +75,7 @@
   4. Stwórz dowolny obiekt i przypisz jako Player
   5. Uruchom scenę - teren będzie generowany wokół gracza
   
----
+
   ### Technologie
 
   - Silnik: Unity 6.3.11f1 (Universal Render Pipeline)
@@ -86,7 +84,7 @@
   - NativeCollections - zero-copy transfer między jobami
   - Simplex Noise - gładki, proceduralny szum bez artefaktów
   - SurfaceNets Algorithm - dual contouring dla voxeli
----
+
   ### Znane ograniczenia
 
   - Brak systemu modyfikacji terenu w runtime - w trakcie
