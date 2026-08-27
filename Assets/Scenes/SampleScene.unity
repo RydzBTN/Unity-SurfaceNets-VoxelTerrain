@@ -563,6 +563,18 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 698359755}
     - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
+      propertyPath: lod0Step
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
+      propertyPath: lod1Step
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
+      propertyPath: lod2Step
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
       propertyPath: destroyAir
       value: 1
       objectReference: {fileID: 0}
@@ -571,24 +583,20 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
-      propertyPath: bodyData.type
+      propertyPath: genData.type
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
-      propertyPath: generateAsync
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
-      propertyPath: renderDistance
+      propertyPath: lod0Distance
       value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
-      propertyPath: maxConcurrentGen
-      value: 8
+      propertyPath: lod1Distance
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
-      propertyPath: maxGenerationsPerFrame
-      value: 50
+      propertyPath: renderDistance
+      value: 16
       objectReference: {fileID: 0}
     - target: {fileID: 8154230434234605904, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
       propertyPath: m_LocalPosition.x

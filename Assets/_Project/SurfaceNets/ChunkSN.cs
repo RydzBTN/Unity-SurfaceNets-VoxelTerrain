@@ -1,11 +1,7 @@
-using System.Collections;
-using System.Diagnostics;
 using Unity.Collections;
-using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
-using Debug = UnityEngine.Debug;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ChunkSN : MonoBehaviour
@@ -14,6 +10,7 @@ public class ChunkSN : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private bool showGizmos = false;
     [SerializeField] private bool showBounds = false;
+    
     public const int Size = 16;
     public const int VoxelArraySize = Size + 1;
     public const int DensityArraySize = Size + 2;
@@ -43,11 +40,8 @@ public class ChunkSN : MonoBehaviour
             {
                 Vector3 worldPos = transform.TransformPoint(vertices[i]);
                 Vector3 worldNormal = transform.TransformDirection(normals[i]);
-
-                // Narysuj linię od wierzchołka w kierunku normalnej
-                Gizmos.DrawLine(worldPos, worldPos + worldNormal * 1f); // 1f = długość strzałki
-
-                // Opcjonalnie: mała kulka na końcu dla lepszej widoczności
+                
+                Gizmos.DrawLine(worldPos, worldPos + worldNormal * 1f);
                 Gizmos.DrawSphere(worldPos + worldNormal * 1f, 0.05f);
             }
         }
@@ -62,7 +56,7 @@ public class ChunkSN : MonoBehaviour
     #endregion
     
     #region PUBLIC API
-    public void Initialize()
+    private void Awake()
     {
         _meshFilter = GetComponent<MeshFilter>();
         _meshRenderer = GetComponent<MeshRenderer>();
@@ -71,16 +65,10 @@ public class ChunkSN : MonoBehaviour
         _meshFilter.sharedMesh = _mesh;
     }
     
-    public NativeArray<Point> ModifyDensityLocal(Vector3 miningWorldPos, float addedDens)
+    public void Reset()
     {
-        Vector3Int localPos = Vector3Int.RoundToInt(transform.TransformPoint(miningWorldPos));
-
-        if (localPos.x < 0 || localPos.y < 0 || localPos.z < 0) return default;
-        if (localPos.x >= DensityArraySize || localPos.y >= DensityArraySize || localPos.z >= DensityArraySize) return default;
-
-        //_points = CalculateDensityWithJob(transform.position, _type, _noise);
-        // może generowanie, zapis i edycja densityArray
-        return default;
+        _mesh.Clear();
+        gameObject.SetActive(false);
     }
     #endregion
     
@@ -96,9 +84,8 @@ public class ChunkSN : MonoBehaviour
         _mesh.RecalculateBounds();
         
         _mesh.name = $"{gameObject.name}_Mesh";
-
+        
         _meshFilter.sharedMesh = _mesh;
-        //Debug.Log($"<color = green>CHUNK MESH: Wierzchołki = {_vertices.Count}, Trójkąty = {_triangles.Count / 3}</color>");
     }
     
     public void SetMesh(Mesh.MeshDataArray meshArray, Bounds bounds, bool disableRenderer)
@@ -108,10 +95,7 @@ public class ChunkSN : MonoBehaviour
         
         _mesh.name = $"{gameObject.name}_Mesh";
         
-        // if (TryGetComponent<MeshRenderer>(out var renderer))
-        // {
-        //     renderer.enabled = _mesh.vertexCount > 0;
-        // }
+        _meshRenderer.enabled = !disableRenderer;
     }
     #endregion
 }

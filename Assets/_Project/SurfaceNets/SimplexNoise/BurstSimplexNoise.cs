@@ -2,9 +2,6 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
 
-/// <summary>
-/// Burst-compatible SimplexNoise
-/// </summary>
 [BurstCompile]
 public struct BurstSimplexNoise
 {

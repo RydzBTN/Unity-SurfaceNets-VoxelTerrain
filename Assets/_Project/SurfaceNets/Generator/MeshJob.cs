@@ -23,29 +23,29 @@ namespace _Project.SurfaceNets.Generator
         public int DensitySize;
         public int VoxelSize;
         public int ChunkSize;
+        public int LodStep;
         
-        //Output
+        // Output
         public Mesh.MeshData OutputMeshData;
-        public NativeList<float3> Vertices;
-        public NativeList<int> Triangles;
         public NativeReference<Bounds> OutputBounds;
         
-        //Temp
-        public NativeArray<short> VoxelVertexIndices;
+        // Temp
+        public NativeList<float3> Vertices;
+        public NativeList<float3> Normals;
+        public NativeList<int> Triangles;
+        public NativeArray<int> VoxelVertexIndices;
         
         public void Execute()
         {
-            // kroki dla Density
             int dStrideX = DensitySize * DensitySize;
             int dStrideY = DensitySize;
             int dStrideZ = 1;
             
-            // kroki dla VoxelVertexIndices
             int vStrideX = VoxelSize * VoxelSize;
             int vStrideY = VoxelSize;
             int vStrideZ = 1;
 
-            // =================  zmiana offsetow z 3D do 1D  ===================
+            // =================  Zmiana offsetów z 3D do 1D  ===================
             NativeArray<int> cornerOffsets1D = new NativeArray<int>(8, Allocator.Temp);
             for (int i = 0; i < 8; i++)
             {
@@ -53,7 +53,7 @@ namespace _Project.SurfaceNets.Generator
                 cornerOffsets1D[i] = offset.x * dStrideX + offset.y * dStrideY + offset.z * dStrideZ;
             }
             
-            // =================  CalculateVertices  ===================
+            // =================  CalculateVertices & Normals  ===================
             for (int i = 0; i < VoxelVertexIndices.Length; i++)
             {
                 VoxelVertexIndices[i] = -1;
@@ -64,7 +64,7 @@ namespace _Project.SurfaceNets.Generator
             for (int y = 0; y < VoxelSize; y++)
             for (int z = 0; z < VoxelSize; z++)
             {
-                int densityIndex1D = x * dStrideX + y * dStrideY + z * dStrideZ;
+                int densityIndex1D = (x + 1) * dStrideX + (y + 1) * dStrideY + (z + 1) * dStrideZ; // 1 woksel marginesu
                 
                 int cornerMask = 0;
                 for (int i = 0; i < 8; i++)
@@ -80,6 +80,7 @@ namespace _Project.SurfaceNets.Generator
                 
                 float3 vertexSum = float3.zero;
                 int cuts = 0;
+
                 for (int i = 0; i < 12; i++)
                 {
                     int2 edge = SurfaceNetsTables.EdgeCorners[i];
@@ -108,8 +109,8 @@ namespace _Project.SurfaceNets.Generator
                             y + SurfaceNetsTables.CornerOffsets[corner2].y,
                             z + SurfaceNetsTables.CornerOffsets[corner2].z
                         );
-                        vertexSum += math.lerp(point1, point2, t);
                         
+                        vertexSum += math.lerp(point1, point2, t);
                         cuts++;
                     }
                 }
@@ -117,22 +118,52 @@ namespace _Project.SurfaceNets.Generator
                 if (cuts > 0)
                 {
                     float3 finalPos = vertexSum / cuts;
-                    Vertices.Add(finalPos);
-                    VoxelVertexIndices[voxel1DIndex] = (short)(Vertices.Length - 1);
+                    
+                    float3 g000 = GetCentralGradient(densityIndex1D + cornerOffsets1D[0], dStrideX, dStrideY, dStrideZ);
+                    float3 g100 = GetCentralGradient(densityIndex1D + cornerOffsets1D[1], dStrideX, dStrideY, dStrideZ);
+                    float3 g010 = GetCentralGradient(densityIndex1D + cornerOffsets1D[2], dStrideX, dStrideY, dStrideZ);
+                    float3 g110 = GetCentralGradient(densityIndex1D + cornerOffsets1D[3], dStrideX, dStrideY, dStrideZ);
+                    float3 g001 = GetCentralGradient(densityIndex1D + cornerOffsets1D[4], dStrideX, dStrideY, dStrideZ);
+                    float3 g101 = GetCentralGradient(densityIndex1D + cornerOffsets1D[5], dStrideX, dStrideY, dStrideZ);
+                    float3 g011 = GetCentralGradient(densityIndex1D + cornerOffsets1D[6], dStrideX, dStrideY, dStrideZ);
+                    float3 g111 = GetCentralGradient(densityIndex1D + cornerOffsets1D[7], dStrideX, dStrideY, dStrideZ);
+                    
+                    float u = finalPos.x - x;
+                    float v = finalPos.y - y;
+                    float w = finalPos.z - z;
+            
+                    // interpolacja gradientu do pozycji wierzchołka
+                    float3 g00 = math.lerp(g000, g100, u);
+                    float3 g10 = math.lerp(g010, g110, u);
+                    float3 g01 = math.lerp(g001, g101, u);
+                    float3 g11 = math.lerp(g011, g111, u);
+            
+                    float3 g0 = math.lerp(g00, g10, v);
+                    float3 g1 = math.lerp(g01, g11, v);
+            
+                    float3 normalVec = math.lerp(g0, g1, w);
+
+                    float lenSq = math.lengthsq(normalVec);
+                    float3 finalNormal = lenSq > 1e-6f ? normalVec * math.rsqrt(lenSq) : new float3(0, 1, 0);
+                    
+                    Vertices.Add(finalPos * LodStep);
+                    Normals.Add(finalNormal);
+                    VoxelVertexIndices[voxel1DIndex] = (Vertices.Length - 1);
                 }
                 
                 voxel1DIndex++;
             }
             
+            cornerOffsets1D.Dispose();
             
             // =================  GenerateTriangles  ===================
             for (int x = 0; x <= ChunkSize; x++)
             for (int y = 0; y <= ChunkSize; y++)
             for (int z = 0; z <= ChunkSize; z++)
             {
-                int densityIndex1D = x * dStrideX + y * dStrideY + z * dStrideZ;
+                int densityIndex1D = (x + 1) * dStrideX + (y + 1) * dStrideY + (z + 1) * dStrideZ; // 1 woksel marginesu
                 
-                // krawędzie wzdłuż osi X
+                // Krawędzie wzdłuż osi X
                 if (x < ChunkSize && y > 0 && z > 0)
                 {
                     int i1 = densityIndex1D;
@@ -143,7 +174,6 @@ namespace _Project.SurfaceNets.Generator
                     
                     if (s1 != s2)
                     {
-                        
                         int c0 = VoxelVertexIndices[(x * vStrideX) + ((y - 1) * vStrideY) + ((z - 1) * vStrideZ)];
                         int c1 = VoxelVertexIndices[(x * vStrideX) + ( y *      vStrideY) + ((z - 1) * vStrideZ)];
                         int c2 = VoxelVertexIndices[(x * vStrideX) + ( y *      vStrideY) + ( z *      vStrideZ)];
@@ -152,7 +182,7 @@ namespace _Project.SurfaceNets.Generator
                     }
                 }
                 
-                // krawędzie wzdłuż osi Y
+                // Krawędzie wzdłuż osi Y
                 if (y < ChunkSize && x > 0 && z > 0)
                 {
                     int i1 = densityIndex1D;
@@ -171,7 +201,7 @@ namespace _Project.SurfaceNets.Generator
                     }
                 }
                 
-                // krawędzie wzdłuż osi Z
+                // Krawędzie wzdłuż osi Z
                 if (z < ChunkSize && x > 0 && y > 0)
                 {
                     int i1 = densityIndex1D;
@@ -192,6 +222,7 @@ namespace _Project.SurfaceNets.Generator
             }
             
             
+            
             // =========== Usuwanie nieużywanych wierzchołków ===========
             if (Triangles.Length > 0 && Vertices.Length > 0)
             {
@@ -204,6 +235,8 @@ namespace _Project.SurfaceNets.Generator
                 }
                 
                 NativeList<float3> compactVertices = new NativeList<float3>(Vertices.Length, Allocator.Temp);
+                NativeList<float3> compactNormals = new NativeList<float3>(Normals.Length, Allocator.Temp);
+                
                 int newIndex = 0;
                 for (int i = 0; i < Vertices.Length; i++)
                 {
@@ -211,6 +244,7 @@ namespace _Project.SurfaceNets.Generator
                     {
                         remap[i] = newIndex++;
                         compactVertices.Add(Vertices[i]);
+                        compactNormals.Add(Normals[i]);
                     }
                 }
                 
@@ -221,25 +255,28 @@ namespace _Project.SurfaceNets.Generator
                 
                 Vertices.Clear();
                 Vertices.AddRange(compactVertices.AsArray());
+                
+                Normals.Clear();
+                Normals.AddRange(compactNormals.AsArray());
+                
+                remap.Dispose();
+                compactVertices.Dispose();
+                compactNormals.Dispose();
             }
-            
             
             // =================  Zapis do MeshData  ===================
             if (Vertices.Length == 0 || Triangles.Length == 0)
             {
-                // Pusty chunk (np. samo powietrze lub sama lita skała)
                 var emptyDesc = new NativeArray<VertexAttributeDescriptor>(0, Allocator.Temp);
                 OutputMeshData.SetVertexBufferParams(0, emptyDesc);
                 emptyDesc.Dispose();
                 
                 OutputMeshData.SetIndexBufferParams(0, IndexFormat.UInt32);
-                
                 OutputMeshData.subMeshCount = 1;
-                OutputMeshData.SetSubMesh(0, new SubMeshDescriptor(0, 0, MeshTopology.Triangles));
+                OutputMeshData.SetSubMesh(0, new SubMeshDescriptor(0, 0));
                 return;
             }
             
-             // definicja formatu wierzchołka w buforze GPU
             var vertexAttributes = new NativeArray<VertexAttributeDescriptor>(2, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
             vertexAttributes[0] = new VertexAttributeDescriptor(VertexAttribute.Position);
             vertexAttributes[1] = new VertexAttributeDescriptor(VertexAttribute.Normal);
@@ -248,10 +285,9 @@ namespace _Project.SurfaceNets.Generator
             vertexAttributes.Dispose();
             OutputMeshData.SetIndexBufferParams(Triangles.Length, IndexFormat.UInt32);
 
-            // wskaźniki do buforów MeshData
             NativeArray<VertexLayout> outVertices = OutputMeshData.GetVertexData<VertexLayout>();
             NativeArray<int> outIndices = OutputMeshData.GetIndexData<int>();
-            outIndices.CopyFrom(Triangles.AsArray()); // od razu przepisanie trojkątów
+            outIndices.CopyFrom(Triangles.AsArray());
             
             float3 min = new float3(float.MaxValue);
             float3 max = new float3(float.MinValue);
@@ -264,46 +300,8 @@ namespace _Project.SurfaceNets.Generator
                 outVertices[i] = new VertexLayout
                 {
                     Position = pos,
-                    Normal = float3.zero
+                    Normal = Normals[i]
                 };
-            }
-            
-            // obliczenie normalow
-            for (int i = 0; i < Triangles.Length; i += 3)
-            {
-                int i0 = Triangles[i];
-                int i1 = Triangles[i + 1];
-                int i2 = Triangles[i + 2];
-
-                float3 v0 = outVertices[i0].Position;
-                float3 v1 = outVertices[i1].Position;
-                float3 v2 = outVertices[i2].Position;
-
-                float3 triNormal = math.cross(v1 - v0, v2 - v0);
-
-                var vert0 = outVertices[i0];
-                var vert1 = outVertices[i1];
-                var vert2 = outVertices[i2];
-
-                vert0.Normal += triNormal;
-                vert1.Normal += triNormal;
-                vert2.Normal += triNormal;
-
-                outVertices[i0] = vert0;
-                outVertices[i1] = vert1;
-                outVertices[i2] = vert2;
-            }
-
-            // normalizacja
-            for (int i = 0; i < outVertices.Length; i++)
-            {
-                var vert = outVertices[i];
-                float lenSq = math.lengthsq(vert.Normal);
-                if (lenSq > 1e-6f)
-                {
-                    vert.Normal *= math.rsqrt(lenSq);
-                }
-                outVertices[i] = vert;
             }
             
             float3 size = max - min;
@@ -311,7 +309,16 @@ namespace _Project.SurfaceNets.Generator
             OutputBounds.Value = new Bounds(center, size);
 
             OutputMeshData.subMeshCount = 1;
-            OutputMeshData.SetSubMesh(0, new SubMeshDescriptor(0, Triangles.Length, MeshTopology.Triangles), MeshUpdateFlags.DontRecalculateBounds);
+            OutputMeshData.SetSubMesh(0, new SubMeshDescriptor(0, Triangles.Length), MeshUpdateFlags.DontRecalculateBounds);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float3 GetCentralGradient(int idx, int sX, int sY, int sZ)
+        {
+            float dx = Density[idx + sX].Density - Density[idx - sX].Density;
+            float dy = Density[idx + sY].Density - Density[idx - sY].Density;
+            float dz = Density[idx + sZ].Density - Density[idx - sZ].Density;
+            return new float3(dx, dy, dz);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

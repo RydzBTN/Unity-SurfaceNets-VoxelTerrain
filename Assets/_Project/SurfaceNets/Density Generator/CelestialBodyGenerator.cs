@@ -1,6 +1,6 @@
+using _Project.SurfaceNets.Density_Generator;
 using Unity.Burst;
 using Unity.Mathematics;
-using UnityEngine;
 
 public enum BodyType
 {
@@ -14,7 +14,6 @@ public enum BodyType
 // todo działanie na ScriptableObject/zewnętrzne dane
 public struct CelestialBodyGenerator
 {
-    [BurstCompile]
     public static float GenerateDensity(float3 worldPos, BodyType bodyType, BurstSimplexNoise noise)
     {
         switch (bodyType)
@@ -30,10 +29,10 @@ public struct CelestialBodyGenerator
 
             case BodyType.Planetoid:
                 return Planetoid(worldPos, noise);
-
+            
             case BodyType.Moon:
                 return Moon(worldPos, noise);
-
+            
             case BodyType.Comet:
                 return Comet(worldPos, noise);
 
@@ -41,9 +40,9 @@ public struct CelestialBodyGenerator
                 return worldPos.y; // płaska powierzchnia
         }
     }
+    
 
     // ============= METEOROID =============
-    [BurstCompile]
     private static float Meteoroid(float3 pos, BurstSimplexNoise noise)
     {
         float radius = 8f;
@@ -55,16 +54,15 @@ public struct CelestialBodyGenerator
     }
 
     // ============= SMALL ASTEROID =============
-    [BurstCompile]
     private static float SmallAsteroid(float3 pos, BurstSimplexNoise noise)
     {
         float radius = 25f;
         float distance = math.length(pos);
 
         float n = FractalNoise(pos, noise,
-            octaves: 3,
-            frequency: 0.05f,
-            amplitude: 6f,
+            octaves: 2,
+            frequency: 0.04f,
+            amplitude: 5f,
             lacunarity: 2.0f,
             persistence: 0.5f);
 
@@ -72,16 +70,15 @@ public struct CelestialBodyGenerator
     }
 
     // ============= ASTEROID =============
-    [BurstCompile]
     private static float Asteroid(float3 pos, BurstSimplexNoise noise)
     {
         float radius = 100;
         float distance = math.length(pos);
 
         float n = FractalNoise(pos, noise,
-            octaves: 6,
-            frequency: 0.01f,
-            amplitude: 20f,
+            octaves: 4,
+            frequency: 0.02f,
+            amplitude: 10f,
             lacunarity: 2.0f,
             persistence: 0.5f);
 
@@ -89,7 +86,6 @@ public struct CelestialBodyGenerator
     }
 
     // ============= PLANETOID =============
-    [BurstCompile]
     private static float Planetoid(float3 pos, BurstSimplexNoise noise)
     {
         float radius = 500f;
@@ -98,7 +94,7 @@ public struct CelestialBodyGenerator
         float terrain = FractalNoise(pos, noise,
             octaves: 5,
             frequency: 0.005f,
-            amplitude: 30f,
+            amplitude: 20f,
             lacunarity: 2.0f,
             persistence: 0.5f);
 
@@ -106,27 +102,23 @@ public struct CelestialBodyGenerator
     }
 
     // ============= MOON / PLANET =============
-    [BurstCompile]
     private static float Moon(float3 pos, BurstSimplexNoise noise)
     {
         float radius = 2000f;
         float distance = math.length(pos);
         
-        float continents = noise.Generate(pos * 0.0001f) * 2000f;
-        
-        float mountains = FractalNoise(pos, noise,
-            octaves: 7,
-            frequency: 0.005f,
-            amplitude: 500f,
+        float terrain = FractalNoise(pos, noise,
+            octaves: 5,
+            frequency: 0.001f,
+            amplitude: 50f,
             lacunarity: 2.0f,
             persistence: 0.5f);
 
-        return distance - (radius + continents + mountains);
+        return distance - (radius + terrain);
     }
 
     // ============= COMET =============
     // todo dodać niesymetryczną warstwe lodu
-    [BurstCompile]
     private static float Comet(float3 pos, BurstSimplexNoise noise)
     {
         float coreRadius = 15f;
@@ -144,7 +136,12 @@ public struct CelestialBodyGenerator
     }
     
     // ============= FRACTAL BROWNIAN MOTION =============
-    [BurstCompile]
+    /// <param name="octaves">Liczba warstw szumu</param>
+    /// <param name="frequency">Częstotliwość szumu</param>
+    /// <param name="amplitude">Wysokość nierówności</param>
+    /// <param name="lacunarity">Jak szybko rośnie częstotliwość</param>
+    /// <param name="persistence">Jak szybko maleje amplituda</param>
+    /// <returns></returns>
     private static float FractalNoise(float3 pos, BurstSimplexNoise noise,
         int octaves, float frequency, float amplitude, float lacunarity, float persistence)
     {
@@ -170,7 +167,6 @@ public struct CelestialBodyGenerator
     /// <summary>
     /// Zwraca promień ciała dla danego typu (przydatne do LOD i generowania chunków)
     /// </summary>
-    [BurstCompile]
     public static float GetBodyRadius(BodyType bodyType)
     {
         switch (bodyType)

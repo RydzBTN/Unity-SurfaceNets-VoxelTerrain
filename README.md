@@ -32,10 +32,11 @@
   - **Optymalizacje**:
     - Przełączany culling pustych i pełnych chunków
     - Render distance jako kula nie sześcian
-    - System LOD (3 poziomy szczegółowości) (wip)
+    - System LOD (3 poziomy szczegółowości)
     - Dynamiczne zwalnianie odległych chunków
+    - Object Pooling dla chunków
 
----
+
   ## Architektura
   
   ### Przepływ danych
@@ -64,7 +65,7 @@
   
   #### *CelestialBodyGenerator* & *BurstSimplexNoise*
   - Warstwa matematyczna świata generująca wartości gęstości na podstawie pozycji globalnej wierzchołka, wybranego profilu ciała niebieskiego.
----
+
   ### Podstawowa konfiguracja
 
   1. Dodaj prefab TerrainGenerator na scene
@@ -77,7 +78,7 @@
   4. Stwórz dowolny obiekt i przypisz jako Player
   5. Uruchom scenę - teren będzie generowany wokół gracza
   
----
+
   ### Technologie
 
   - Silnik: Unity 6.3.11f1 (Universal Render Pipeline)
@@ -86,14 +87,11 @@
   - NativeCollections - zero-copy transfer między jobami
   - Simplex Noise - gładki, proceduralny szum bez artefaktów
   - SurfaceNets Algorithm - dual contouring dla voxeli
----
-  ### Znane ograniczenia
 
-  - Brak systemu modyfikacji terenu w runtime - w trakcie
-  - LOD z 3 stopniami szczegółowości (1, 0.5, 0.25) - w trakcie
-  - liczenie normali tworzy widoczne szwy pomiędzy chunkami
-  - Brak wsparcia dla tekstur
-  - Mesh bez siatki UV
-  - Object Pooling dla chunków - całkowita eliminacja Instantiate i Destroy na rzecz puli obiektów.
-  (odchudzenie operacji na glownym wątku)
+  ### WIP
+  - prawidłowe oznaczanie pustych chunków
+  - łączenia między warstwami LOD
+  - limit alokacji zadań na klatke
+  - szybkie sprawdzania czy pusty
+
 

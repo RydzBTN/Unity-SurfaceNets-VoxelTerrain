@@ -44,12 +44,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dba5e065b414424e8e29d008ed151b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TerrainGenerator
-  bodyData:
+  genData:
     seed: 123456789
     type: 2
   chunkPrefab: {fileID: 6239347809566957284, guid: 0b8e040fb566ff144aa5c335022f52ec, type: 3}
-  maxConcurrentGen: 8
   destroyAir: 1
   destroySolid: 1
+  generateAsync: 1
   player: {fileID: 0}
-  renderDistance: 8
+  renderDistance: 12
+  lod0Step: 1
+  lod1Step: 2
+  lod2Step: 8
+  measureGenTime: 1
