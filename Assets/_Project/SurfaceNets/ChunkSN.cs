@@ -88,14 +88,12 @@ public class ChunkSN : MonoBehaviour
         _meshFilter.sharedMesh = _mesh;
     }
     
-    public void SetMesh(Mesh.MeshDataArray meshArray, Bounds bounds, bool disableRenderer)
+    public void SetMesh(Mesh.MeshDataArray meshArray, Bounds bounds)
     {
         Mesh.ApplyAndDisposeWritableMeshData(meshArray, _mesh, MeshUpdateFlags.DontValidateIndices);
         _mesh.bounds = bounds;
         
         _mesh.name = $"{gameObject.name}_Mesh";
-        
-        _meshRenderer.enabled = !disableRenderer;
     }
     #endregion
 }

@@ -588,15 +588,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
       propertyPath: lod0Distance
-      value: 4
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
       propertyPath: lod1Distance
-      value: 10
+      value: 32
       objectReference: {fileID: 0}
     - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
       propertyPath: renderDistance
-      value: 16
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 5867408497145109666, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
+      propertyPath: maxConcurrentGen
+      value: 32
       objectReference: {fileID: 0}
     - target: {fileID: 8154230434234605904, guid: 6f87c3df9f973014497e59def89bfe3b, type: 3}
       propertyPath: m_LocalPosition.x
