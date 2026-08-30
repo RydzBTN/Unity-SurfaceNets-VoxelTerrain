@@ -62,6 +62,7 @@ public class ChunkSN : MonoBehaviour
         _meshRenderer = GetComponent<MeshRenderer>();
         
         _mesh = new Mesh();
+        _mesh.MarkDynamic();
         _meshFilter.sharedMesh = _mesh;
     }
     
@@ -92,7 +93,6 @@ public class ChunkSN : MonoBehaviour
     {
         Mesh.ApplyAndDisposeWritableMeshData(meshArray, _mesh, MeshUpdateFlags.DontValidateIndices);
         _mesh.bounds = bounds;
-        
         _mesh.name = $"{gameObject.name}_Mesh";
     }
     #endregion

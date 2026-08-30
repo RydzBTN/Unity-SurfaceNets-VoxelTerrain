@@ -72,7 +72,7 @@ public struct CelestialBodyGenerator
     // ============= ASTEROID =============
     private static float Asteroid(float3 pos, BurstSimplexNoise noise)
     {
-        float radius = 100;
+        float radius = 150;
         float distance = math.length(pos);
 
         float n = FractalNoise(pos, noise,
@@ -173,7 +173,7 @@ public struct CelestialBodyGenerator
         {
             case BodyType.Meteoroid: return 8f;
             case BodyType.SmallAsteroid: return 25f;
-            case BodyType.Asteroid: return 100;
+            case BodyType.Asteroid: return 150;
             case BodyType.Planetoid: return 500f;
             case BodyType.Moon: return 2000f;
             case BodyType.Comet: return 15f;

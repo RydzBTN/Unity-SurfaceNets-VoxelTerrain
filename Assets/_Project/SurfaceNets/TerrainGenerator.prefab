@@ -48,12 +48,10 @@ MonoBehaviour:
     seed: 123456789
     type: 2
   chunkPrefab: {fileID: 6239347809566957284, guid: 0b8e040fb566ff144aa5c335022f52ec, type: 3}
-  destroyAir: 1
-  destroySolid: 1
-  generateAsync: 1
+  maxConcurrentGen: 64
   player: {fileID: 0}
-  renderDistance: 12
+  renderDistance: 16
   lod0Step: 1
-  lod1Step: 2
-  lod2Step: 8
-  measureGenTime: 1
+  lod1Step: 4
+  lod0Distance: 6
+  currentGen: 0
