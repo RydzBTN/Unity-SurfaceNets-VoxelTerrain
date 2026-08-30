@@ -100,11 +100,10 @@
   - prawidłowe oznaczanie pustych chunków
   - łączenia między warstwami LOD
   - szybkie sprawdzania czy pusty
-  - sprawdzanie tylko zewnętrznej warstwy render distance
 
  ### Znane problemy
-  - **Złe oznaczanie pustych chunków** - generator działający z mniejszą dokładnością (lod2,3)
-  oznacza chunka jako pusty gdzie z docelową dokładnością (lod0) tak na prawde ma on siate.
+  - **Łączenia między poziomami LOD** – brak zasłon lub łączenia wierzchołków na granicy 
+  dwóch różnych poziomów LOD powoduje widoczne szczeliny w siatce.
   - **Precyzja oznaczania pustych chunków przy niskim LOD** – próbkowanie z większym krokiem (`lod1Step`)
   może pominąć cienkie warstwy terenu i przedwcześnie sklasyfikować chunk jako całkowicie pusty (`Air`) lub pełny (`Solid`).
 
