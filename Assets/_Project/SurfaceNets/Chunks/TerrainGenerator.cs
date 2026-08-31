@@ -1,42 +1,24 @@
-using System;
 using System.Collections.Generic;
 using _Project.SurfaceNets.Data;
+using _Project.SurfaceNets.Generator;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.PlayerLoop;
 using UnityEngine.Pool;
 
-namespace _Project.SurfaceNets
+namespace _Project.SurfaceNets.Chunks
 {
     public enum LOD
     {
         LOD0,
         LOD1
     }
-
-    public enum ChunkState
-    {
-        Generating,
-        Loaded,
-        Air,
-        Solid
-    }
-
-    public class ChunkInfo
-    {
-        public ChunkSN Chunk;
-        public LOD LOD;
-        public ChunkState State;
-        public Point[] Density = null;
-        public int GenId = 0;
-    }
-
+    
     public class TerrainGenerator : MonoBehaviour
     {
         [SerializeField] private GeneratorData genData;
 
         [Space(15), Header("Chunk Generation")] 
-        [SerializeField] private ChunkSN chunkPrefab;
+        [SerializeField] private Chunk chunkPrefab;
 
         [SerializeField] private int maxConcurrentGen = 16;
 
@@ -78,7 +60,7 @@ namespace _Project.SurfaceNets
         private readonly HashSet<Vector3Int> _pendingSet = new();
         private readonly List<Vector3Int> _chunksToUnload = new();
 
-        private IObjectPool<ChunkSN> _chunkPool;
+        private IObjectPool<Chunk> _chunkPool;
         private Vector3Int _lastChunkPlayerPos;
         private static Vector3Int _renderLimit;
 
@@ -90,10 +72,10 @@ namespace _Project.SurfaceNets
         {
             genData.InitializeNoise();
 
-            int limit = CelestialBodyGenerator.GetSuggestedChunkRadius(genData.type, ChunkSN.Size);
+            int limit = CelestialBodyGenerator.GetSuggestedChunkRadius(genData.type, Chunk.Size);
             _renderLimit = new Vector3Int(limit, limit, limit);
 
-            _chunkPool = new ObjectPool<ChunkSN>(
+            _chunkPool = new ObjectPool<Chunk>(
                 createFunc: () => Instantiate(chunkPrefab, transform),
                 actionOnGet: chunk => chunk.gameObject.SetActive(true),
                 actionOnRelease: chunk => chunk.Reset(),
@@ -420,7 +402,7 @@ namespace _Project.SurfaceNets
             try
             {
                 int genId = orgChunkInfo.GenId;
-                Vector3 chunkGenPos = chunkIndex * ChunkSN.Size - ChunkSN.Offset;
+                Vector3 chunkGenPos = chunkIndex * Chunk.Size - Chunk.Offset;
                 int lodStep = GetLodStep(orgChunkInfo.LOD);
                 
                 MeshBuildResult result = await ChunkMeshBuilder.BuildAsync(
@@ -447,7 +429,7 @@ namespace _Project.SurfaceNets
                     return;
                 }
                 
-                ChunkSN chunk = chunkInfo.Chunk == null ? _chunkPool.Get() : chunkInfo.Chunk;
+                Chunk chunk = chunkInfo.Chunk == null ? _chunkPool.Get() : chunkInfo.Chunk;
                 chunk.transform.localPosition = chunkGenPos;
                 chunk.gameObject.name = $"Chunk_({chunkIndex.x}_{chunkIndex.y}_{chunkIndex.z})";
                 chunk.SetMesh(result.MeshData, result.Bounds);
@@ -493,9 +475,9 @@ namespace _Project.SurfaceNets
             Vector3 localPos = transform.InverseTransformPoint(playerPos);
 
             return new Vector3Int(
-                Mathf.FloorToInt((localPos.x + ChunkSN.Offset.x) / ChunkSN.Size),
-                Mathf.FloorToInt((localPos.y + ChunkSN.Offset.y) / ChunkSN.Size),
-                Mathf.FloorToInt((localPos.z + ChunkSN.Offset.z) / ChunkSN.Size));
+                Mathf.FloorToInt((localPos.x + Chunk.Offset.x) / Chunk.Size),
+                Mathf.FloorToInt((localPos.y + Chunk.Offset.y) / Chunk.Size),
+                Mathf.FloorToInt((localPos.z + Chunk.Offset.z) / Chunk.Size));
         }
         
         private LOD GetLodByDistanceSq(int distanceSq) 

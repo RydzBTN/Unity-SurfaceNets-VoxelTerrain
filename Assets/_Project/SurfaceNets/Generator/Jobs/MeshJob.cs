@@ -7,7 +7,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace _Project.SurfaceNets.Generator
+namespace _Project.SurfaceNets.Generator.Jobs
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct VertexLayout

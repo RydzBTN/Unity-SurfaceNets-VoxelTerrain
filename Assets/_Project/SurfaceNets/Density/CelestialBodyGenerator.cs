@@ -1,4 +1,4 @@
-using _Project.SurfaceNets.Density_Generator;
+using _Project.SurfaceNets.Chunks.Density_Generator;
 using Unity.Burst;
 using Unity.Mathematics;
 

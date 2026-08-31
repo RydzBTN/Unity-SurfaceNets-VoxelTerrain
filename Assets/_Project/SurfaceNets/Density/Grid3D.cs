@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Mathematics;
 
-namespace _Project.SurfaceNets.JobHelpers
+namespace _Project.SurfaceNets.Density
 {
     /// <summary>
     /// Pomaga przemieniać indexy tablic 3D [,,] na 1D [] i odwrotnie

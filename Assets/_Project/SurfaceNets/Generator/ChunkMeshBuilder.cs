@@ -1,10 +1,9 @@
 using _Project.SurfaceNets.Data;
-using _Project.SurfaceNets.Generator;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 
-namespace _Project.SurfaceNets
+namespace _Project.SurfaceNets.Generator
 {
     public struct MeshBuildResult
     {

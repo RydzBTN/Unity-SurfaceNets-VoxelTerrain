@@ -1,10 +1,10 @@
-using _Project.SurfaceNets.JobHelpers;
+using _Project.SurfaceNets.Density;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 
-namespace _Project.SurfaceNets.Generator
+namespace _Project.SurfaceNets.Generator.Jobs
 {
     [BurstCompile]
     public struct DensityJob : IJobParallelFor

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
-using _Project.SurfaceNets.JobHelpers;
+using _Project.SurfaceNets.Chunks;
+using _Project.SurfaceNets.Density;
+using _Project.SurfaceNets.Generator.Jobs;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -19,7 +21,7 @@ namespace _Project.SurfaceNets.Generator
             out Mesh.MeshDataArray meshDataArray,
             out NativeReference<Bounds> meshBounds)
         {
-            int chunkSize = ChunkSN.Size / lodStep;
+            int chunkSize = Chunk.Size / lodStep;
             int voxelArraySize = chunkSize + 1;
             int densityArraySize = chunkSize + 4;
 
@@ -111,12 +113,12 @@ namespace _Project.SurfaceNets.Generator
             List<Vector3> verticesList = new List<Vector3>();
 
             voxelVertexIndices =
-                new short[ChunkSN.VoxelArraySize, ChunkSN.VoxelArraySize,
-                    ChunkSN.VoxelArraySize]; // Tablica indeksów wierzchołków dla każdego voxela (-1 = brak wierzchołka)
+                new short[Chunk.VoxelArraySize, Chunk.VoxelArraySize,
+                    Chunk.VoxelArraySize]; // Tablica indeksów wierzchołków dla każdego voxela (-1 = brak wierzchołka)
 
-            for (int x = 0; x < ChunkSN.VoxelArraySize; x++)
-            for (int y = 0; y < ChunkSN.VoxelArraySize; y++)
-            for (int z = 0; z < ChunkSN.VoxelArraySize; z++)
+            for (int x = 0; x < Chunk.VoxelArraySize; x++)
+            for (int y = 0; y < Chunk.VoxelArraySize; y++)
+            for (int z = 0; z < Chunk.VoxelArraySize; z++)
             {
                 voxelVertexIndices[x, y, z] = -1;
 
@@ -125,7 +127,7 @@ namespace _Project.SurfaceNets.Generator
                 {
                     int3 cornerOffset = SurfaceNetsTables.CornerOffsets[i];
                     int index = Grid3D.ToIndex(x + cornerOffset.x, y + cornerOffset.y, z + cornerOffset.z,
-                        ChunkSN.DensityArraySize);
+                        Chunk.DensityArraySize);
                     // oznaczamy to jako 1 na masce 0000 0000
                     if (densityArray[index].IsSolid)
                         cornerMask |= (1 << i);
@@ -157,8 +159,8 @@ namespace _Project.SurfaceNets.Generator
                             y + SurfaceNetsTables.CornerOffsets[corner2].y,
                             z + SurfaceNetsTables.CornerOffsets[corner2].z
                         );
-                        int index1 = Grid3D.ToIndex(point1.x, point1.y, point1.z, ChunkSN.DensityArraySize);
-                        int index2 = Grid3D.ToIndex(point2.x, point2.y, point2.z, ChunkSN.DensityArraySize);
+                        int index1 = Grid3D.ToIndex(point1.x, point1.y, point1.z, Chunk.DensityArraySize);
+                        int index2 = Grid3D.ToIndex(point2.x, point2.y, point2.z, Chunk.DensityArraySize);
 
                         float dens1 = densityArray[index1].Density;
                         float dens2 = densityArray[index2].Density;
@@ -187,15 +189,15 @@ namespace _Project.SurfaceNets.Generator
         {
             List<int> trianglesList = new List<int>();
 
-            for (int x = 0; x <= ChunkSN.Size; x++)
-            for (int y = 0; y <= ChunkSN.Size; y++)
-            for (int z = 0; z <= ChunkSN.Size; z++)
+            for (int x = 0; x <= Chunk.Size; x++)
+            for (int y = 0; y <= Chunk.Size; y++)
+            for (int z = 0; z <= Chunk.Size; z++)
             {
                 // krawędzie wzdłuż osi X
-                if (x < ChunkSN.Size && y > 0 && z > 0)
+                if (x < Chunk.Size && y > 0 && z > 0)
                 {
-                    int i1 = Grid3D.ToIndex(x, y, z, ChunkSN.DensityArraySize);
-                    int i2 = Grid3D.ToIndex(x + 1, y, z, ChunkSN.DensityArraySize);
+                    int i1 = Grid3D.ToIndex(x, y, z, Chunk.DensityArraySize);
+                    int i2 = Grid3D.ToIndex(x + 1, y, z, Chunk.DensityArraySize);
 
                     bool s1 = densityArray[i1].IsSolid;
                     bool s2 = densityArray[i2].IsSolid;
@@ -210,10 +212,10 @@ namespace _Project.SurfaceNets.Generator
                 }
 
                 // krawędzie wzdłuż osi Y
-                if (y < ChunkSN.Size && x > 0 && z > 0)
+                if (y < Chunk.Size && x > 0 && z > 0)
                 {
-                    int i1 = Grid3D.ToIndex(x, y, z, ChunkSN.DensityArraySize);
-                    int i2 = Grid3D.ToIndex(x, y + 1, z, ChunkSN.DensityArraySize);
+                    int i1 = Grid3D.ToIndex(x, y, z, Chunk.DensityArraySize);
+                    int i2 = Grid3D.ToIndex(x, y + 1, z, Chunk.DensityArraySize);
 
                     bool s1 = densityArray[i1].IsSolid;
                     bool s2 = densityArray[i2].IsSolid;
@@ -228,10 +230,10 @@ namespace _Project.SurfaceNets.Generator
                 }
 
                 // krawędzie wzdłuż osi Z
-                if (z < ChunkSN.Size && x > 0 && y > 0)
+                if (z < Chunk.Size && x > 0 && y > 0)
                 {
-                    int i1 = Grid3D.ToIndex(x, y, z, ChunkSN.DensityArraySize);
-                    int i2 = Grid3D.ToIndex(x, y, z + 1, ChunkSN.DensityArraySize);
+                    int i1 = Grid3D.ToIndex(x, y, z, Chunk.DensityArraySize);
+                    int i2 = Grid3D.ToIndex(x, y, z + 1, Chunk.DensityArraySize);
 
                     bool s1 = densityArray[i1].IsSolid;
                     bool s2 = densityArray[i2].IsSolid;

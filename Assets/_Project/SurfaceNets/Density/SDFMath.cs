@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace _Project.SurfaceNets.Density_Generator
+namespace _Project.SurfaceNets.Chunks.Density_Generator
 {
     public static class SDFMath
     {

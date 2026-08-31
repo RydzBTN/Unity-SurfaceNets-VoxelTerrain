@@ -2,10 +2,7 @@ using Unity.Burst;
 using Unity.Mathematics;
 
 /// <summary>
-/// Wartość density dla jednego punktu w siatce dla algorytmu Surface Nets.
-/// Liczące się wartości mieszczą się w zakresie -1 do 1 więc zamiast używać float (4 bajty)
-/// to można go skompresować do sbyte (1 bajt), aby zaoszczędzić miejsce w RAM aż 4 krotnie
-/// przy niewielkiej utracie precyzji +-7,8mm.
+/// Wartość density w sbyte dla jednego punktu w siatce dla algorytmu Surface Nets.
 /// </summary>
 [BurstCompile]
 public struct Point
